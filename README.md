@@ -8,11 +8,7 @@ See [MyStruct](src/lib/MyStruct.sol) for a toy example.
 
 # Overview
 
-## Compact encoding scheme
-
-Values are parsed from left to right, and each value is encoded in the smallest number of bytes possible.
-
-### Type1
+## Type1
 
 `Type1` encoding uses a "meta" byte to encode the number of bytes "from the left" (minus 1 if not 0) that a value occupies.
 
@@ -28,6 +24,16 @@ Type1: 0x010100                                                            // 1 
 Value: 0x0100000000000000000000000000000000000000000000000000000000000000 // 31 zero-bytes, 1 non-zero byte
 Type1: 0x1f0100000000000000000000000000000000000000000000000000000000000000 // 31 zero-bytes, 2 non-zero bytes
 ```
+
+### Pros
+
+- Marginally cheaper to decode than `Type2` (~40 gas per word)
+
+### Cons
+
+- Inefficient for "left-skewed" values such as `bytesN`-types or very large numbers
+- Inefficient for values that occupy 28 bytes or more
+- Can't compress "middle" bytes
 
 ### Type2
 
@@ -50,6 +56,17 @@ Type2: 0x202607                                                            // 0 
 Value: 0x0000000000000000000000000000000000000000000000000001c11000000000  // 29 zero-bytes, 3 non-zero bytes
 Type2: 0x21241c11                                                          // 0 zero-bytes,  4 non-zero bytes
 ```
+
+### Pros
+
+- Only right-packs values when it's economical to do so
+- Can encode values that are "left-skewed" such as `bytesN`-types or very large numbers
+
+### Cons
+
+- Marginally more expensive to decode than `Type1` (~40 gas per word)
+- Still inefficient for values that occupy 28 bytes or more
+- Can't compress "middle" bytes
 
 ## Pointers
 
