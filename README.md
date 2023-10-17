@@ -1,4 +1,4 @@
-\*\*\*\*# Custom Calldata
+# Custom Calldata
 
 This is an experimental library for creating custom calldata encoding and parsing for structs in Solidity.
 
