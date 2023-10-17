@@ -21,6 +21,7 @@ library Encoder {
     /**
      * @notice Encodes a bytes32 value into a bytes array according to the "Type1" schema
      *         Type1 is the concatenation of the following bytes: (VAL_WIDTH_BYTES - 1)<right-packed VAL>
+     *         Type1 is marginally cheaper to decode than Type2, but will not compress the "right side" of the value.
      * @param x The bytes32 value to encode
      */
     function encodeType1(bytes32 x) internal pure returns (bytes memory encoded) {
@@ -30,12 +31,24 @@ library Encoder {
 
     /**
      * @notice Encodes a bytes32 value into a bytes array according to the "Type2" schema
-     *         Type1 is the concatenation of the following bytes: ((VAL_WIDTH_BYTES - 1) | EXPAND_FLAG?)(EXPAND_BITS? or NULL)<packed VAL>
+     *         Type2 is the concatenation of the following bytes: ((VAL_WIDTH_BYTES - 1) | EXPAND_FLAG?)(EXPAND_BITS? or NULL)<packed VAL>
+     *         Type2 will only encode expansion bits if it will save at least 4 bytes of zero calldata, otherwise, encoding a non-zero byte is more expensive;
+     *         thus Type2 is a "superset" of Type1.
+     *         Type2 is marginally more expensive to decode than Type1, but compresses the "right side" of values when economical to do so.
      * @param x The bytes32 value to encode
      */
     function encodeType2(bytes32 x) internal pure returns (bytes memory encoded) {
         (uint256 valWidth, uint256 lengthAdjust, uint256 meta, bytes32 y) = type2Components(x);
         return encodeFromComponents(uint256(valWidth), uint256(lengthAdjust), uint256(meta), y);
+    }
+
+    /**
+     * @notice Encodes a relative offset pointer into a bytes array according to the "Type1" schema
+     *         (since a pointer will realistically never be more than 32 bytes)
+     */
+    function encodeRelativePointer(uint256 pos) internal pure returns (bytes memory encoded) {
+        (uint256 valWidth, uint256 lengthAdjust, uint256 meta, bytes32 newVal) = type1Components(bytes32(pos));
+        return encodeFromComponents(valWidth, lengthAdjust, meta | POINTER_FLAG, newVal);
     }
 
     /**

@@ -21,7 +21,6 @@ contract EncoderTest is Test {
         assertEq(encoded.length, 2);
         assertEq(encoded[0], 0x00);
         assertEq(encoded[1], bytes1(0xff));
-        vm.breakpoint("a");
         x = bytes32(uint256(256));
         encoded = Encoder.encodeType1(x);
         assertEq(encoded.length, 3);
