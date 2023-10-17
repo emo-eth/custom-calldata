@@ -38,7 +38,7 @@ contract MyStructTest is Test {
         assembly {
             offset := encoded.offset
         }
-        (decoded,) = MyStructLib.decode(offset);
+        (decoded,) = MyStructLib.decodeFromPointer(offset);
     }
 
     function decodePacked(bytes calldata encoded) external pure returns (MyStruct memory decoded) {
@@ -46,6 +46,6 @@ contract MyStructTest is Test {
         assembly {
             offset := encoded.offset
         }
-        (decoded,) = MyStructLib.decodePacked(offset);
+        (decoded,) = MyStructLib.decode(offset);
     }
 }

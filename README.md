@@ -1,4 +1,4 @@
-# Custom Calldata
+\*\*\*\*# Custom Calldata
 
 This is an experimental library for creating custom calldata encoding and parsing for structs in Solidity.
 
@@ -25,8 +25,8 @@ Value: 0x0000000000000000000000000000000000000000000000000000000000000001  // 31
 Type1: 0x0001                                                              // 1 zero-byte,   1 non-zero byte
 Value: 0x0000000000000000000000000000000000000000000000000000000000000100  // 31 zero-bytes, 1 non-zero byte
 Type1: 0x010100                                                            // 1 zero-byte,   2 non-zero bytes
-Value = 0x0100000000000000000000000000000000000000000000000000000000000000 // 31 zero-bytes, 1 non-zero byte
-Type1: 0x1f010000000000000000000000000000000000000000000000000000000000000 // 31 zero-bytes, 2 non-zero bytes
+Value: 0x0100000000000000000000000000000000000000000000000000000000000000 // 31 zero-bytes, 1 non-zero byte
+Type1: 0x1f0100000000000000000000000000000000000000000000000000000000000000 // 31 zero-bytes, 2 non-zero bytes
 ```
 
 ### Type2

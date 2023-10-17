@@ -13,7 +13,7 @@ struct MyStruct {
 library MyStructLib {
     error InvalidPointer();
 
-    function decode(uint256 pos) internal pure returns (MyStruct memory decoded, uint256 newPos) {
+    function decodeFromPointer(uint256 pos) internal pure returns (MyStruct memory decoded, uint256 newPos) {
         bytes32 relativePointer;
         bool isPointer;
         (relativePointer, newPos, isPointer) = Parser.readSingle(pos);
@@ -31,7 +31,7 @@ library MyStructLib {
         return (decoded, newPos);
     }
 
-    function decodePacked(uint256 pos) internal pure returns (MyStruct memory decoded, uint256 newPos) {
+    function decode(uint256 pos) internal pure returns (MyStruct memory decoded, uint256 newPos) {
         bytes32 temp;
         (temp, newPos,) = Parser.readSingle(pos);
         decoded.a = uint256(temp);
