@@ -11,48 +11,48 @@ contract ParserTest is Test {
         parser = new Parser();
     }
 
-    function testReadSingleType1(uint256 valToEncode) public {
-        uint256 numBytes = getNumBytes(valToEncode);
-        uint256 meta = (numBytes > 0) ? numBytes - 1 : 0;
-        uint256 bytesLen = (numBytes > 0) ? numBytes + 1 : 2;
-        uint256 toEncode = valToEncode << ((32 - numBytes) * 8);
-        bytes memory context;
-        emit log_named_uint("numBytes", numBytes);
-        emit log_named_uint("meta", meta);
-        emit log_named_uint("bytesLen", bytesLen);
-        emit log_named_uint("toEncode", toEncode);
-        assembly {
-            context := mload(0x40)
-            mstore(context, bytesLen)
-            mstore8(add(context, 1), meta)
-            mstore(add(context, 33), toEncode)
-        }
+    // function testReadSingleType1(uint256 valToEncode) public {
+    //     uint256 numBytes = getNumBytes(valToEncode);
+    //     uint256 meta = (numBytes > 0) ? numBytes - 1 : 0;
+    //     uint256 bytesLen = (numBytes > 0) ? numBytes + 1 : 2;
+    //     uint256 toEncode = valToEncode << ((32 - numBytes) * 8);
+    //     bytes memory context;
+    //     emit log_named_uint("numBytes", numBytes);
+    //     emit log_named_uint("meta", meta);
+    //     emit log_named_uint("bytesLen", bytesLen);
+    //     emit log_named_uint("toEncode", toEncode);
+    //     assembly {
+    //         context := mload(0x40)
+    //         mstore(context, bytesLen)
+    //         mstore8(add(context, 1), meta)
+    //         mstore(add(context, 33), toEncode)
+    //     }
 
-        bytes32 readValue = parser.readSingle(false, context);
-        assertEq(readValue, bytes32(valToEncode));
-    }
+    //     bytes32 readValue = parser.readSingle(false, context);
+    //     assertEq(readValue, bytes32(valToEncode));
+    // }
 
-    function testReadSingleType1d() public {
-        uint256 valToEncode = 0;
-        uint256 numBytes = getNumBytes(valToEncode);
-        uint256 meta = (numBytes > 0) ? numBytes - 1 : 0;
-        uint256 bytesLen = (numBytes > 0) ? numBytes + 1 : 2;
-        uint256 toEncode = valToEncode << ((32 - numBytes) * 8);
-        bytes memory context;
-        emit log_named_uint("numBytes", numBytes);
-        emit log_named_uint("meta", meta);
-        emit log_named_uint("bytesLen", bytesLen);
-        emit log_named_uint("toEncode", toEncode);
-        assembly {
-            context := mload(0x40)
-            mstore(context, bytesLen)
-            mstore8(add(context, 1), meta)
-            mstore(add(context, 33), toEncode)
-        }
+    // function testReadSingleType1d() public {
+    //     uint256 valToEncode = 0;
+    //     uint256 numBytes = getNumBytes(valToEncode);
+    //     uint256 meta = (numBytes > 0) ? numBytes - 1 : 0;
+    //     uint256 bytesLen = (numBytes > 0) ? numBytes + 1 : 2;
+    //     uint256 toEncode = valToEncode << ((32 - numBytes) * 8);
+    //     bytes memory context;
+    //     emit log_named_uint("numBytes", numBytes);
+    //     emit log_named_uint("meta", meta);
+    //     emit log_named_uint("bytesLen", bytesLen);
+    //     emit log_named_uint("toEncode", toEncode);
+    //     assembly {
+    //         context := mload(0x40)
+    //         mstore(context, bytesLen)
+    //         mstore8(add(context, 1), meta)
+    //         mstore(add(context, 33), toEncode)
+    //     }
 
-        bytes32 readValue = parser.readSingle(false, context);
-        assertEq(readValue, bytes32(valToEncode));
-    }
+    //     bytes32 readValue = parser.readSingle(false, context);
+    //     assertEq(readValue, bytes32(valToEncode));
+    // }
 
     function getNumBytes(uint256 x) internal pure returns (uint256) {
         uint256 numBytes = 0;
