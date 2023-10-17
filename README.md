@@ -1,66 +1,61 @@
-## Foundry
+# Custom Calldata
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+This is an experimental library for creating custom calldata encoding and parsing for structs in Solidity.
 
-Foundry consists of:
+It is meant to be used with codegen tools to automatically create the encoding and decoding functions for structs.
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+See [MyStruct](src/lib/MyStruct.sol) for a toy example.
 
-## Documentation
+# Overview
 
-https://book.getfoundry.sh/
+## Compact encoding scheme
 
-## Usage
+Values are parsed from left to right, and each value is encoded in the smallest number of bytes possible.
 
-### Build
+### Type1
 
-```shell
-$ forge build
+`Type1` encoding uses a "meta" byte to encode the number of bytes "from the left" (minus 1 if not 0) that a value occupies.
+
+Examples:
+
+```
+Value: 0x0000000000000000000000000000000000000000000000000000000000000000  // 32 zero-bytes
+Type1: 0x0000                                                              // 2 zero-bytes
+Value: 0x0000000000000000000000000000000000000000000000000000000000000001  // 31 zero-bytes, 1 non-zero byte
+Type1: 0x0001                                                              // 1 zero-byte,   1 non-zero byte
+Value: 0x0000000000000000000000000000000000000000000000000000000000000100  // 31 zero-bytes, 1 non-zero byte
+Type1: 0x010100                                                            // 1 zero-byte,   2 non-zero bytes
+Value = 0x0100000000000000000000000000000000000000000000000000000000000000 // 31 zero-bytes, 1 non-zero byte
+Type1: 0x1f010000000000000000000000000000000000000000000000000000000000000 // 31 zero-bytes, 2 non-zero bytes
 ```
 
-### Test
+### Type2
 
-```shell
-$ forge test
+`Type2` encoding uses a "meta" byte to encode the number of bytes "from the right" (minus 1 if not 0) that a value occupies, and a flag indicating whether the following byte encodes the power of 2 that the succeeding bytes should be multiplied by. If the flag is not present, the "expansion bits" are not encoded at all.
+By default, `Type2` encoding will not attempt to "compress" fewer than 32 bits, since 1 non-zero byte of calldata is as expensive as 4 zero-bytes of calldata.
+
+```
+Value: 0x0000000000000000000000000000000000000000000000000000000000000000  // 32 zero-bytes
+Type2: 0x0000                                                              // 2 zero-bytes
+Value: 0x0000000000000000000000000000000000000000000000000000000000000001  // 31 zero-bytes, 1 non-zero byte
+Type2: 0x0001                                                              // 1 zero-byte,   1 non-zero byte
+Value: 0x0000000000000000000000000000000000000000000000000000000000000100  // 31 zero-bytes, 1 non-zero byte
+Type2: 0x010100                                                            // 1 zero-byte,   1 non-zero byte
+Value: 0x0100000000000000000000000000000000000000000000000000000000000000  // 31 zero-bytes, 1 non-zero byte
+Type2: 0x20f801                                                            // 0 zero-bytes,  3 non-zero bytes
+Value: 0x0000000000000000000000000000000000000000000000000000001000000000  // 31 zero-bytes, 1 non-zero byte
+Type2: 0x202401                                                            // 0 zero-bytes,  3 non-zero bytes
+Value: 0x000000000000000000000000000000000000000000000000000001c000000000  // 30 zero-bytes, 2 non-zero bytes
+Type2: 0x202607                                                            // 0 zero-bytes,  3 non-zero bytes
+Value: 0x000000000000000000000000000000000000000000000000000001c110000000  // 29 zero-bytes, 3 non-zero bytes
+Type2: 0x21201c11                                                          // 0 zero-bytes,  4 non-zero bytes
 ```
 
-### Format
+## Caveats
 
-```shell
-$ forge fmt
-```
-
-### Gas Snapshots
-
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
+- The encoding schemes are inefficient for values that occupy 28 bytes or more, since the non-zero "meta" byte is as expensive as 4 zero-bytes.
+- Constant-time access of values in calldata is not possible, since the offset of each value is dependent on the length of each previous value
+  - This could maybe be compensated for, eg, array indexing by storing word-aligned arrays of items when convenient
+- Decoding values oftentimes costs more gas than is saved by the compact encoding
+  - This is a decent tradeoff for, eg, L2s, where calldata gas costs are several orders of magnitude more expensive than compute
+- The encoding schemes are obviously not compatible with traditional ABI encoding

@@ -129,6 +129,32 @@ contract EncoderTest is Test {
         }
     }
 
+    function testReadme() public {
+        bytes32 value;
+        bytes memory type2;
+        value = 0x0000000000000000000000000000000000000000000000000000000000000000; // 32 zero-bytes
+        type2 = hex"0000"; // 2 zero-bytes
+        assertEq(Encoder.encodeType2(value), type2);
+        value = 0x0000000000000000000000000000000000000000000000000000000000000001; // 31 zero-bytes, 1 non-zero byte
+        type2 = hex"0001"; // 1 zero-byte,   1 non-zero byte
+        assertEq(Encoder.encodeType2(value), type2);
+        value = 0x0000000000000000000000000000000000000000000000000000000000000100; // 31 zero-bytes, 1 non-zero byte
+        type2 = hex"010100"; // 1 zero-byte,   1 non-zero byte
+        assertEq(Encoder.encodeType2(value), type2);
+        value = 0x0100000000000000000000000000000000000000000000000000000000000000; // 31 zero-bytes, 1 non-zero byte
+        type2 = hex"20f801"; // 0 zero-bytes,  3 non-zero bytes
+        assertEq(Encoder.encodeType2(value), type2);
+        value = 0x0000000000000000000000000000000000000000000000000000001000000000; // 31 zero-bytes, 1 non-zero byte
+        type2 = hex"202401"; // 0 zero-bytes,  3 non-zero bytes
+        assertEq(Encoder.encodeType2(value), type2);
+        value = 0x000000000000000000000000000000000000000000000000000001c000000000; // 30 zero-bytes, 2 non-zero bytes
+        type2 = hex"202607";
+        assertEq(Encoder.encodeType2(value), type2);
+        value = 0x00000000000000000000000000000000000000000000000000001c1100000000;
+        type2 = hex"21201c11";
+        assertEq(Encoder.encodeType2(value), type2);
+    }
+
     function testMsb() public {
         assertEq(Encoder.msb(0), 0);
         for (uint256 i; i < 256; i++) {
