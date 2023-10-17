@@ -51,6 +51,10 @@ Value: 0x000000000000000000000000000000000000000000000000000001c110000000  // 29
 Type2: 0x21201c11                                                          // 0 zero-bytes,  4 non-zero bytes
 ```
 
+## Pointers
+
+The "meta" byte can optionaly encode a "pointer" flag (`1 << 6`) to indicate to decoders that the value is a pointer to a relative offset, similar to current ABI-encoding behavior.
+
 ## Caveats
 
 - The encoding schemes are inefficient for values that occupy 28 bytes or more, since the non-zero "meta" byte is as expensive as 4 zero-bytes.
