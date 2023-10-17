@@ -150,8 +150,8 @@ contract EncoderTest is Test {
         value = 0x000000000000000000000000000000000000000000000000000001c000000000; // 30 zero-bytes, 2 non-zero bytes
         type2 = hex"202607";
         assertEq(Encoder.encodeType2(value), type2);
-        value = 0x00000000000000000000000000000000000000000000000000001c1100000000;
-        type2 = hex"21201c11";
+        value = 0x0000000000000000000000000000000000000000000000000001c11000000000;
+        type2 = hex"21241c11";
         assertEq(Encoder.encodeType2(value), type2);
     }
 
