@@ -197,12 +197,15 @@ library Parser {
                 // if EXPAND_FLAG is set, load second byte of encoded item which encodes expansion metadata
                 let expandBits := byte(EXPAND_ARG_INDEX, _temp)
                 // the last 5 bits represent number of bytes to read after this position, minus 1
+                // mask last 5 bits of meta
+                let metaArg := and(_meta, _5_BIT_MASK)
+                // if expandBits is 0,
+                // let extendArg := add(iszero(iszero(expandBits)), metaArg)
                 let numBytesEncoded :=
                     add(
                         // add 1 to last 5 bits to get number of bytes to read
                         1,
-                        // mask last 5 bits of meta
-                        and(_meta, _5_BIT_MASK)
+                        metaArg
                     )
                 // check if pointer flag is set
                 _isPtr := shr(POINTER_FLAG_OFFSET, _meta)
@@ -234,23 +237,16 @@ library Parser {
      * @notice Read a word-aligned array from calldata
      * @dev temp, tentative
      * @param pos The calldata offset from which to read
-     * @param isWordArray Whether or not the encoded length represents words (true) or bytes (false)
      * @return result
      * @return newPos
      * @return isPtr
      */
-    function readWordBytesArray(uint256 pos, bool isWordArray)
+    function readLiteralBytesArray(uint256 pos)
         internal
         pure
         returns (bytes calldata result, uint256 newPos, bool isPtr)
     {
         assembly {
-            // ptr|size <value>
-            // 0x0000 - encodes bytes32(0)
-            // 0x011111 - encodes uint256(15)
-            // 0x1f1000000000000000000000000000000000000000000000000000000000000000 encodes 1 << 255
-            // 0x81ffff - encodes pointer(65535)
-
             // load encoded item from calldata at pos
             let temp := calldataload(pos)
             // get first byte of encoded item which encodes metadata
@@ -272,9 +268,39 @@ library Parser {
             // shr by readRightShift to get rid of the bytes we don't want
             result.length := shr(readRightShift, result.length)
             result.offset := add(result.offset, numBytesToRead)
-            // multiply length by 32 if array contains word-length elements (vs bytes)
-            newPos := add(result.offset, shl(mul(5, isWordArray), result.length))
+            newPos := add(result.offset, result.length)
             isPtr := true
+        }
+    }
+
+    function readWordArray(uint256 pos) internal pure returns (bytes32[] calldata result, uint256 newPos, bool isPtr) {
+        {
+            assembly {
+                // load encoded item from calldata at pos
+                let temp := calldataload(pos)
+                // get first byte of encoded item which encodes metadata
+                let meta := byte(0, temp)
+                // the last 5 bits represent number of bytes to read after this position, minus 1
+                let numBytesToRead :=
+                    add(
+                        // add 1 to last 5 bits to get number of bits to read
+                        1,
+                        // mask last 5 bits of meta
+                        and(meta, _5_BIT_MASK)
+                    )
+                let numExtraBytes := sub(ONE_WORD, numBytesToRead)
+                // multiply by 8 to get number of bits to shr
+                let readRightShift := shl(BYTES_TO_BITS_SHIFT, numExtraBytes)
+                // read word from pos + 1
+                result.offset := add(pos, 1)
+                result.length := calldataload(result.offset)
+                // shr by readRightShift to get rid of the bytes we don't want
+                result.length := shr(readRightShift, result.length)
+                result.offset := add(result.offset, numBytesToRead)
+                // multiply length by 32 to account for word size
+                newPos := add(result.offset, shl(5, result.length))
+                isPtr := true
+            }
         }
     }
 }

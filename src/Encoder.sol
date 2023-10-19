@@ -17,6 +17,9 @@ library Encoder {
     uint256 constant ONE_BYTE_BITS = 8;
     uint256 constant EXPAND_FLAG = 0x20;
     uint256 constant POINTER_FLAG = 0x40;
+    uint256 constant ARRAY_FLAG = 0x80;
+    uint256 constant ARRAY_WORD_ELEMENTS_FLAG = 0x20;
+    // uint256 constant ARRAY_POINTER_FLAG = 0x20;
 
     /**
      * @notice Encodes a bytes32 value into a bytes array according to the "Type1" schema
@@ -49,6 +52,38 @@ library Encoder {
     function encodeRelativePointer(uint256 pos) internal pure returns (bytes memory encoded) {
         (uint256 valWidth, uint256 lengthAdjust, uint256 meta, bytes32 newVal) = type1Components(bytes32(pos));
         return encodeFromComponents(valWidth, lengthAdjust, meta | POINTER_FLAG, newVal);
+    }
+
+    function encodeArrayLiteralBytes(bytes memory input) internal pure returns (bytes memory encoded) {
+        (uint256 valWidth, uint256 lengthAdjust, uint256 meta, bytes32 y) = type1Components(bytes32(input.length));
+
+        // encode length efficiently
+        bytes memory encodedLength = encodeFromComponents(valWidth, lengthAdjust, meta | ARRAY_FLAG, y);
+        // but concat it with literal bytes from bytes array
+        return bytes.concat(encodedLength, input);
+    }
+
+    function encodeArrayLiteralWords(bytes32[] memory input) internal pure returns (bytes memory encoded) {
+        (uint256 valWidth, uint256 lengthAdjust, uint256 meta, bytes32 y) = type1Components(bytes32(input.length));
+
+        // encode length efficiently
+        bytes memory encodedLength =
+            encodeFromComponents(valWidth, lengthAdjust, meta | ARRAY_FLAG | ARRAY_WORD_ELEMENTS_FLAG, y);
+        // but concat it with literal words from bytes array
+        return bytes.concat(encodedLength, abi.encodePacked(input));
+    }
+
+    function encodeArrayCompact(bytes32[] memory input) internal pure returns (bytes memory encoded) {
+        uint256 length = input.length;
+        (uint256 valWidth, uint256 lengthAdjust, uint256 meta, bytes32 y) = type1Components(bytes32(length));
+
+        // encode length efficiently
+        encoded = encodeFromComponents(valWidth, lengthAdjust, meta | ARRAY_FLAG, y);
+        // then encode each element efficiently
+        for (uint256 i; i < length; i++) {
+            encoded = bytes.concat(encoded, encodeType2(input[i]));
+        }
+        return encoded;
     }
 
     /**

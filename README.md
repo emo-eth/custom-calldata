@@ -79,4 +79,5 @@ The "meta" byte can optionaly encode a "pointer" flag (`1 << 6`) to indicate to 
   - This could maybe be compensated for, eg, array indexing by storing word-aligned arrays of items when convenient
 - Decoding values oftentimes costs more gas than is saved by the compact encoding
   - This is a decent tradeoff for, eg, L2s, where calldata gas costs are several orders of magnitude more expensive than compute
+- Only reads from `calldata` (for now)
 - The encoding schemes are obviously not compatible with traditional ABI encoding

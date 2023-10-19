@@ -155,6 +155,47 @@ contract EncoderTest is Test {
         assertEq(Encoder.encodeType2(value), type2);
     }
 
+    function testEncodeArrayLiteralBytes() public {
+        bytes memory input = hex"000102030405060708090a0b0c0d0e0f";
+        bytes memory encoded = Encoder.encodeArrayLiteralBytes(input);
+        assertEq(encoded.length, 2 + input.length);
+        assertEq(encoded[0], bytes1(uint8(0x00 | Encoder.ARRAY_FLAG)));
+        assertEq(encoded[1], bytes1(uint8(input.length)));
+        for (uint256 i; i < input.length; i++) {
+            assertEq(encoded[i + 2], input[i]);
+        }
+    }
+
+    function testEncodeArrayLiteralWords() public {
+        bytes32[] memory input = new bytes32[](3);
+        input[0] = bytes32(bytes1(0x01));
+        input[1] = bytes32(bytes1(0x02));
+        input[2] = bytes32(bytes1(0x03));
+        bytes memory encoded = Encoder.encodeArrayLiteralWords(input);
+        assertEq(encoded.length, 2 + input.length * 32);
+        assertEq(encoded[0], bytes1(uint8(0x00 | Encoder.ARRAY_FLAG | Encoder.ARRAY_WORD_ELEMENTS_FLAG)));
+        assertEq(encoded[1], bytes1(uint8(input.length)));
+        for (uint256 i; i < input.length; i++) {
+            assertEq(encoded[i * 32 + 2], input[i][0]);
+        }
+    }
+
+    function testEncodeArrayCompact() public {
+        bytes32[] memory input = new bytes32[](3);
+        input[0] = bytes32(bytes1(0x01));
+        input[1] = bytes32(bytes1(0x03));
+        input[2] = bytes32(bytes1(0x05));
+        bytes memory encoded = Encoder.encodeArrayCompact(input);
+        assertEq(encoded.length, 2 + input.length * 3);
+        assertEq(encoded[0], bytes1(uint8(0x00 | Encoder.ARRAY_FLAG)), "bad array meta");
+        assertEq(encoded[1], bytes1(uint8(input.length)), "bad array length");
+        for (uint256 i; i < input.length; i++) {
+            assertEq(encoded[i * 3 + 2], bytes1(uint8(0x00 | Encoder.EXPAND_FLAG)), "bad meta");
+            assertEq(encoded[i * 3 + 3], bytes1(uint8(248)), "bad expand");
+            assertEq(encoded[i * 3 + 4], input[i][0], "bad value");
+        }
+    }
+
     function testMsb() public {
         assertEq(Encoder.msb(0), 0);
         for (uint256 i; i < 256; i++) {

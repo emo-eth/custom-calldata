@@ -2,8 +2,13 @@
 src = "src"
 out = "out"
 libs = ["lib"]
-remappings = ['forge-std/=lib/forge-std/src/', 'solady/=lib/solady/src/']
+remappings = [
+    'forge-std/=lib/forge-std/src/',
+    'solady/=lib/solady/src/',
+    'seaport-types/=lib/seaport-types/src/',
+]
 optimizer_runs = 9_999_999
+
 
 [fuzz]
 runs = 4096
