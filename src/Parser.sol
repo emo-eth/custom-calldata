@@ -7,6 +7,7 @@ library Parser {
     uint256 constant BYTES_TO_BITS_SHIFT = 3;
     uint256 constant EXPAND_FLAG = 0x20;
     uint256 constant POINTER_FLAG = 0x40;
+    uint256 constant SIGNED_FLAG = 0x60;
     uint256 constant POINTER_FLAG_OFFSET = 6;
     uint256 constant META_ARG_INDEX = 0;
     uint256 constant EXPAND_ARG_INDEX = 1;
@@ -199,8 +200,6 @@ library Parser {
                 // the last 5 bits represent number of bytes to read after this position, minus 1
                 // mask last 5 bits of meta
                 let metaArg := and(_meta, _5_BIT_MASK)
-                // if expandBits is 0,
-                // let extendArg := add(iszero(iszero(expandBits)), metaArg)
                 let numBytesEncoded :=
                     add(
                         // add 1 to last 5 bits to get number of bytes to read
@@ -219,15 +218,51 @@ library Parser {
                 _val := shl(expandBits, shr(readRightShift, _val))
                 _newPos := add(_newPos, numBytesEncoded)
             }
+
+            function readSingleType3(_temp, _meta, _pos) -> _val, _newPos, _isPtr {
+                // if EXPAND_FLAG is set, load second byte of encoded item which encodes expansion metadata
+                let expandBits := byte(EXPAND_ARG_INDEX, _temp)
+                // the last 5 bits represent number of bytes to read after this position, minus 1
+                // mask last 5 bits of meta
+                let metaArg := and(_meta, _5_BIT_MASK)
+                let numBytesEncoded :=
+                    add(
+                        // add 1 to last 5 bits to get number of bytes to read
+                        1,
+                        metaArg
+                    )
+                let numExtraBytesLoaded := sub(ONE_WORD, numBytesEncoded)
+                // multiply by 8 to get number of bits to shr
+                let readRightShift := shl(BYTES_TO_BITS_SHIFT, numExtraBytesLoaded)
+                // read word from pos + 1 + expandFlag
+                _newPos := add(_pos, 2)
+                _val := calldataload(_newPos)
+                _val := shr(readRightShift, _val)
+                // if val is signed, flip its bits, otherwise, use the original value
+                _val := not(_val)
+                // shift left by expandBits no matter what
+                _val := shl(expandBits, _val)
+
+                _newPos := add(_newPos, numBytesEncoded)
+                _isPtr := false
+            }
+
             let temp := calldataload(pos)
             let meta := byte(0, temp)
             let type2 := and(meta, EXPAND_FLAG)
+            // todo: better constant
+            let signedIfType2 := and(meta, POINTER_FLAG)
             for {} 1 {} {
                 if iszero(type2) {
                     val, newPos, isPtr := readSingleType1(meta, pos)
                     break
                 }
-                val, newPos, isPtr := readSingleType2(temp, meta, pos)
+                if iszero(signedIfType2) {
+                    val, newPos, isPtr := readSingleType2(temp, meta, pos)
+                    break
+                }
+
+                val, newPos, isPtr := readSingleType3(temp, meta, pos)
                 break
             }
         }

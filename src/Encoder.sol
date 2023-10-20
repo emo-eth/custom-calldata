@@ -17,6 +17,9 @@ library Encoder {
     uint256 constant ONE_BYTE_BITS = 8;
     uint256 constant EXPAND_FLAG = 0x20;
     uint256 constant POINTER_FLAG = 0x40;
+    // a pointer will never point to an offset greater than 32 bits, ie, a POINTER will never require EXPANDing
+    // so we can overload these two bits to indicate signed values by marking both the EXPAND and POINTER flags
+    uint256 constant SIGNED_FLAG = 0x60;
     uint256 constant ARRAY_FLAG = 0x80;
     uint256 constant ARRAY_WORD_ELEMENTS_FLAG = 0x20;
     // uint256 constant ARRAY_POINTER_FLAG = 0x20;
@@ -42,6 +45,22 @@ library Encoder {
      */
     function encodeType2(bytes32 x) internal pure returns (bytes memory encoded) {
         (uint256 valWidth, uint256 lengthAdjust, uint256 meta, bytes32 y) = type2Components(x);
+        return encodeFromComponents(uint256(valWidth), uint256(lengthAdjust), uint256(meta), y);
+    }
+
+    function encodeType3(bytes32 x) internal pure returns (bytes memory encoded) {
+        return encodeType2(x);
+    }
+
+    function encodeType3(int256 x) internal pure returns (bytes memory encoded) {
+        bool signed;
+        bytes32 cast;
+        assembly {
+            signed := shr(255, x)
+            cast := x
+        }
+        (uint256 valWidth, uint256 lengthAdjust, uint256 meta, bytes32 y) = type3Components(cast, signed);
+
         return encodeFromComponents(uint256(valWidth), uint256(lengthAdjust), uint256(meta), y);
     }
 
@@ -129,6 +148,45 @@ library Encoder {
             valWidth = (msb(uint256(newVal)) >> BITS_TO_BYTES_SHIFT) + 1;
             metaWidth = 2;
             meta = (((valWidth - 1) | EXPAND_FLAG) << ONE_BYTE_BITS) | expansionBits;
+        }
+    }
+
+    function type3Components(bytes32 x, bool sign)
+        internal
+        pure
+        returns (uint256 valWidth, uint256 metaWidth, uint256 meta, bytes32 newVal)
+    {
+        unchecked {
+            uint256 expansionBits = lsb(uint256(x));
+            uint256 flags;
+
+            uint256 notMul;
+            uint256 mulMul;
+
+            assembly {
+                // 0 if expansionBits <= 32, otherwise expansionBits
+                expansionBits := mul(expansionBits, lt(expansionBits, 32))
+
+                // shr or sar depending on sign
+                newVal :=
+                    or(
+                        // if sign is true, sar by expansionBits
+                        mul(sign, sar(expansionBits, x)),
+                        // if sign is false, shr by expansionBits
+                        mul(iszero(sign), shr(expansionBits, x))
+                    )
+
+                notMul := mul(sign, not(newVal))
+                mulMul := mul(iszero(sign), newVal)
+
+                // if sign is true, then we need to flip all bits to determine how many bytes to cut off top
+                newVal := or(mul(sign, not(newVal)), mul(iszero(sign), newVal))
+                flags := or(EXPAND_FLAG, shl(sign, EXPAND_FLAG))
+            }
+
+            valWidth = (msb(uint256(newVal)) >> BITS_TO_BYTES_SHIFT) + 1;
+            metaWidth = 2;
+            meta = (((valWidth - 1) | flags) << ONE_BYTE_BITS) | expansionBits;
         }
     }
 

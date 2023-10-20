@@ -110,6 +110,16 @@ contract EncoderTest is Test {
         }
     }
 
+    function testEncodeType3() public {
+        int256 x = -1;
+        bytes memory encoded = Encoder.encodeType3(int256(x));
+        emit log_bytes(encoded);
+        assertEq(encoded.length, 3);
+        assertEq(encoded[0], bytes1(uint8(0x00 | Encoder.SIGNED_FLAG)));
+        assertEq(encoded[1], bytes1(0x00));
+        assertEq(encoded[2], bytes1(0x00));
+    }
+
     function testEncodePackingBits() public {
         uint256 x;
         for (uint256 i = 0; i < Encoder.EXPANSION_BIT_CUTOFF; i++) {

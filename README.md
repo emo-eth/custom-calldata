@@ -8,9 +8,26 @@ See [MyStruct](src/lib/MyStruct.sol) for a toy example.
 
 # Overview
 
+## "Meta" byte
+
+Encoded values are prefixed with a "meta" (name needs workshopping) byte that encodes the number of bytes "from the left" (minus 1, if not 0) that a value occupies in the lower 5 bits.
+
+The top 3 bits of a "meta" byte encode different instructions for parsing, enumerated in the following table (WIP):
+
+| Value      | Name                | Description                                                                                                                                                                                                                           |
+| ---------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0x000xxxxx | Standard Type1      | Indicates the encoded value `X` occupies the following N+1 bytes                                                                                                                                                                      |
+| 0x001xxxxx | Standard Type2      | Indicates the next byte encodes a power of two. The following N+1 bytes contain the encoded value `log_2(X)`.                                                                                                                         |
+| 0x010xxxxx | Pointer (metadata)  | Indicates the encoded value `X` occupies the following N+1 bytes. The value itself should be treated as a relative offset pointing to the actual encoded value. Custom encoders and decoders can decide how and when to use pointers. |
+| 0x011xxxxx | Type3               | Indicates the next byte encodes a power of two. The following N+1 bytes encode `not(log_2(X))`.                                                                                                                                       |
+| 0x100xxxxx | Literal Bytes Array | Indicates that, for `bytes` array `A`, the encoded value `A.length` occupies the following N+1 bytes. The following `A.length` bytes are the literal contents of the `bytes` array `A`.                                               |
+| 0x101xxxxx | Literal Word Array  | Indicates that, for a `value-type` array `A` (eg: `bytes32[]`), the encoded value `A.length` occupies the following N+1 bytes. The following `A.length * 32` bytes are the literal contents of the word-encoded array `A`.            |
+| 0x110xxxxx | Unused              |                                                                                                                                                                                                                                       |
+| 0x111xxxxx | Unused              |                                                                                                                                                                                                                                       |
+
 ## Type1
 
-`Type1` encoding uses a "meta" byte to encode the number of bytes "from the left" (minus 1 if not 0) that a value occupies.
+`Type1` encoding uses a single "meta" byte to encode the number of bytes "from the left" (minus 1 if not 0) that a value occupies.
 
 Examples:
 
@@ -37,8 +54,8 @@ Type1: 0x1f0100000000000000000000000000000000000000000000000000000000000000 // 3
 
 ### Type2
 
-`Type2` encoding uses a "meta" byte to encode the number of bytes "from the right" (minus 1 if not 0) that a value occupies, and a flag indicating whether the following byte encodes the power of 2 that the succeeding bytes should be multiplied by. If the flag is not present, the "expansion bits" are not encoded at all.
-By default, `Type2` encoding will not attempt to "compress" fewer than 32 bits, since 1 non-zero byte of calldata is as expensive as 4 zero-bytes of calldata.
+`Type2` encoding uses a "meta" byte to encode the number of bytes "from the right" (minus 1 if not 0) that a value occupies, and an additional byte containing the power of 2 that the succeeding N+1 bytes should be multiplied by.
+`Type2` encoding will not attempt to "compress" fewer than 32 bits, since 1 non-zero byte of calldata is as expensive as 4 zero-bytes of calldata.
 
 ```
 Value: 0x0000000000000000000000000000000000000000000000000000000000000000  // 32 zero-bytes
@@ -68,9 +85,11 @@ Type2: 0x21241c11                                                          // 0 
 - Still inefficient for values that occupy 28 bytes or more
 - Can't compress "middle" bytes
 
-## Pointers
+### Type3
 
-The "meta" byte can optionaly encode a "pointer" flag (`1 << 6`) to indicate to decoders that the value is a pointer to a relative offset, similar to current ABI-encoding behavior.
+`Type3` encoding uses a "meta" byte to encode the number of bytes "from the right" (minus 1 if not 0) that an encoded value occupies, and an additional byte containing the power of 2 that the succeeding N+1 bytes should be multiplied by, once bitwise-negated.
+
+Type3 is useful for encoding negative integers, or values with many upper bits set.
 
 ## Caveats
 

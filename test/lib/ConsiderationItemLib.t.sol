@@ -72,18 +72,22 @@ contract ConsiderationItemLibTest is Test {
     }
 
     function testCompare() public {
+        emit log(string("benchmark seaport ConsiderationItem erc20-like"));
         ConsiderationItem memory input = ConsiderationItem({
-            itemType: ItemType.ERC1155,
-            token: address(this),
+            itemType: ItemType.ERC20,
+            token: address(uint160(uint256(keccak256(abi.encode(address(this)))))),
             identifierOrCriteria: 0,
             startAmount: 1e18,
             endAmount: 2e18,
             recipient: payable(address(this))
         });
         benchmark(input);
+        emit log(string("\n"));
+        emit log(string("benchmark seaport ConsiderationItem erc721-like"));
+
         input = ConsiderationItem({
             itemType: ItemType.ERC721,
-            token: address(this),
+            token: address(uint160(uint256(keccak256(abi.encode(address(this)))))),
             identifierOrCriteria: 0,
             startAmount: 1,
             endAmount: 1,
@@ -94,24 +98,25 @@ contract ConsiderationItemLibTest is Test {
     }
 
     function benchmark(ConsiderationItem memory input) internal {
-        bytes memory encoded = ConsiderationItemLib.encode(input);
-        emit log_named_bytes("custom", encoded);
-        emit log_named_uint("custom cost", calcCost(encoded));
         bytes memory abiEncoded = abi.encode(input);
-        emit log_named_bytes("abi", abiEncoded);
-        emit log_named_uint("abi cost", calcCost(abiEncoded));
+        emit log_named_bytes("abi encoding", abiEncoded);
+        emit log_named_uint("abi encoding cost", calcCost(abiEncoded));
+        bytes memory encoded = ConsiderationItemLib.encode(input);
+        emit log_named_bytes("custom encoding", encoded);
+        emit log_named_uint("custom encoding cost", calcCost(encoded));
+
         bytes memory zipped = LibZip.flzCompress(encoded);
-        emit log_named_bytes("flz custom ", zipped);
-        emit log_named_uint("flz custom cost", calcCost(zipped));
+        emit log_named_bytes("solady flz-compressed custom encoding", zipped);
+        emit log_named_uint("solady flz-compressed custom encoding cost", calcCost(zipped));
         bytes memory cd = LibZip.cdCompress(encoded);
-        emit log_named_bytes("cd custom", cd);
-        emit log_named_uint("cd custom cost", calcCost(cd));
+        emit log_named_bytes("solady cd-compressed custom encoding", cd);
+        emit log_named_uint("solady cd-compressed custom encoding cost", calcCost(cd));
         zipped = LibZip.flzCompress(abiEncoded);
-        emit log_named_bytes("flz abi", zipped);
-        emit log_named_uint("flz abi cost", calcCost(zipped));
+        emit log_named_bytes("solady flz-compressed abi encoding", zipped);
+        emit log_named_uint("solady flz-compressed abi encoding cost", calcCost(zipped));
         cd = LibZip.cdCompress(abiEncoded);
-        emit log_named_bytes("cd abi", cd);
-        emit log_named_uint("cd abi cost", calcCost(cd));
+        emit log_named_bytes("solady cd-compressed abi encoding", cd);
+        emit log_named_uint("solady cd-compressed abi encoding cost", calcCost(cd));
 
         assertEq(LibZip.flzDecompress(LibZip.flzCompress(encoded)), encoded, "flz decompress");
     }
