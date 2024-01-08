@@ -167,20 +167,12 @@ library Encoder {
                 // 0 if expansionBits <= 32, otherwise expansionBits
                 expansionBits := mul(expansionBits, lt(expansionBits, 32))
 
-                // shr or sar depending on sign
-                newVal :=
-                    or(
-                        // if sign is true, sar by expansionBits
-                        mul(sign, sar(expansionBits, x)),
-                        // if sign is false, shr by expansionBits
-                        mul(iszero(sign), shr(expansionBits, x))
-                    )
-
+                newVal := sar(expansionBits, x)
                 notMul := mul(sign, not(newVal))
                 mulMul := mul(iszero(sign), newVal)
 
                 // if sign is true, then we need to flip all bits to determine how many bytes to cut off top
-                newVal := or(mul(sign, not(newVal)), mul(iszero(sign), newVal))
+                newVal := or(notMul, mulMul)
                 flags := or(EXPAND_FLAG, shl(sign, EXPAND_FLAG))
             }
 
