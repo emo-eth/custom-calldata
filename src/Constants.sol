@@ -36,3 +36,5 @@ uint256 constant EIP2098_SIG = 0xfc; // 0b11111100
 uint256 constant POINTER_TWO_BYTE = 0xfd; // 0b11111101
 uint256 constant POINTER_FOUR_BYTE = 0xfe; // 0b11111110
 uint256 constant RESERVED = 0xff; // 0b11111111
+uint256 constant ARRAY_MAX_LENGTH_BYTES = 4;
+uint256 constant REG_ID_MAX_LENGTH_BYTES = 6;

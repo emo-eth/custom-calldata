@@ -21,7 +21,9 @@ import {
     ONE_BYTE_BITS,
     ONE_WORD,
     TWO_WORDS,
-    FREE_PTR
+    FREE_PTR,
+    ARRAY_MAX_LENGTH_BYTES,
+    REG_ID_MAX_LENGTH_BYTES
 } from "./Constants.sol";
 
 library XRLPEncoder {
@@ -47,8 +49,8 @@ library XRLPEncoder {
     }
 
     function encode(bytes memory arr) internal pure returns (bytes memory encoded) {
-        uint256 arrLengthBytesWidthMinusOne = (msb(arr.length) >> BITS_TO_BYTES_SHIFT);
-        require(arrLengthBytesWidthMinusOne < 4, "XRLPEncoder: array too long");
+        uint256 arrLengthBytesWidthMinusOne = bytesWidth(arr.length) - 1;
+        require(arrLengthBytesWidthMinusOne < ARRAY_MAX_LENGTH_BYTES, "XRLPEncoder: array too long");
         uint256 prefix = (arrLengthBytesWidthMinusOne) | BYTES_MIN;
         if (arrLengthBytesWidthMinusOne == 0) {
             return abi.encodePacked(uint8(prefix), uint8(arr.length), arr);
@@ -62,8 +64,8 @@ library XRLPEncoder {
     }
 
     function encode(bytes32[] memory arr) internal pure returns (bytes memory encoded) {
-        uint256 arrLengthBytesWidthMinusOne = (msb(arr.length) >> BITS_TO_BYTES_SHIFT);
-        require(arrLengthBytesWidthMinusOne < 4, "XRLPEncoder: array too long");
+        uint256 arrLengthBytesWidthMinusOne = bytesWidth(arr.length) - 1;
+        require(arrLengthBytesWidthMinusOne < ARRAY_MAX_LENGTH_BYTES, "XRLPEncoder: array too long");
         uint256 prefix = (arrLengthBytesWidthMinusOne) | WORDS_MIN;
         if (arrLengthBytesWidthMinusOne == 0) {
             return abi.encodePacked(uint8(prefix), uint8(arr.length), (arr));
@@ -81,8 +83,8 @@ library XRLPEncoder {
         pure
         returns (bytes memory encoded)
     {
-        uint256 arrLengthBytesWidthMinusOne = (msb(arr.length) >> BITS_TO_BYTES_SHIFT);
-        require(arrLengthBytesWidthMinusOne < 4, "XRLPEncoder: array too long");
+        uint256 arrLengthBytesWidthMinusOne = bytesWidth(arr.length) - 1;
+        require(arrLengthBytesWidthMinusOne < ARRAY_MAX_LENGTH_BYTES, "XRLPEncoder: array too long");
         uint256 meta = (
             ((arrLengthBytesWidthMinusOne | HOMOGENOUS_NBYTE_MIN) << 16 | (width << 8) | expansionBits)
                 << ((arrLengthBytesWidthMinusOne + 1) << BITS_TO_BYTES_SHIFT) | arr.length
@@ -137,9 +139,9 @@ library XRLPEncoder {
         }
     }
 
-    function encodeHeterogenous(bytes32[] memory arr) internal view returns (bytes memory encoded) {
-        uint256 arrLengthBytesWidthMinusOne = (msb(arr.length) >> BITS_TO_BYTES_SHIFT);
-        require(arrLengthBytesWidthMinusOne < 4, "XRLPEncoder: array too long");
+    function encodeHeterogenous(bytes32[] memory arr) internal pure returns (bytes memory encoded) {
+        uint256 arrLengthBytesWidthMinusOne = bytesWidth(arr.length) - 1;
+        require(arrLengthBytesWidthMinusOne < ARRAY_MAX_LENGTH_BYTES, "XRLPEncoder: array too long");
         uint256 meta = (
             (HETEROGENOUS_NBYTE_MIN | arrLengthBytesWidthMinusOne)
                 << ((arrLengthBytesWidthMinusOne + 1) << BITS_TO_BYTES_SHIFT)
@@ -161,7 +163,7 @@ library XRLPEncoder {
 
     function encodeFromRegistry(uint256 id, uint256 registryPrefix) internal pure returns (bytes memory encoded) {
         uint256 idWidth = bytesWidth(id);
-        require(idWidth < 7, "XRLPEncoder: id too large");
+        require(idWidth <= REG_ID_MAX_LENGTH_BYTES, "XRLPEncoder: id too large");
         uint256 encodedWidth;
         if (idWidth < 3) {
             encodedWidth = 0;
@@ -181,7 +183,7 @@ library XRLPEncoder {
 
     function encodeNested(bytes memory xrlpData) internal pure returns (bytes memory encoded) {
         uint256 lengthBytesWidthMinusOne = bytesWidth(xrlpData.length) - 1;
-        require(lengthBytesWidthMinusOne < 4, "XRLPEncoder: array too long");
+        require(lengthBytesWidthMinusOne < ARRAY_MAX_LENGTH_BYTES, "XRLPEncoder: array too long");
         uint256 prefix = (
             (lengthBytesWidthMinusOne | NESTED_MIN) << ((lengthBytesWidthMinusOne + 1) << BITS_TO_BYTES_SHIFT)
         ) | xrlpData.length;
@@ -209,7 +211,7 @@ library XRLPEncoder {
 
     function encodePointer(uint256 offset) internal pure returns (bytes memory encoded) {
         uint256 offsetWidthMinusOne = bytesWidth(offset) - 1;
-        require(offsetWidthMinusOne < 4, "XRLPEncoder: offset too large");
+        require(offsetWidthMinusOne < ARRAY_MAX_LENGTH_BYTES, "XRLPEncoder: offset too large");
 
         if (offsetWidthMinusOne < 2) {
             return abi.encodePacked(uint8(POINTER_TWO_BYTE), uint16(offset));
@@ -260,7 +262,7 @@ library XRLPEncoder {
         returns (uint256 valWidth, uint256 prefixWidth, uint256 meta, bytes32 newVal)
     {
         unchecked {
-            valWidth = (msb(uint256(x)) >> BITS_TO_BYTES_SHIFT) + 1;
+            valWidth = bytesWidth(uint256(x));
             prefixWidth = 1;
             meta = valWidth - 1;
             newVal = x;
@@ -286,7 +288,7 @@ library XRLPEncoder {
                 return type1Components(x);
             }
             newVal = bytes32(uint256(x) >> expansionBits);
-            valWidth = (msb(uint256(newVal)) >> BITS_TO_BYTES_SHIFT) + 1;
+            valWidth = bytesWidth(uint256(newVal));
             prefixWidth = 2;
             prefix = (((valWidth - 1) | TYPE_TWO_MIN) << ONE_BYTE_BITS) | expansionBits;
         }
@@ -323,7 +325,7 @@ library XRLPEncoder {
                 flags := TYPE_THREE_MIN
             }
 
-            valWidth = (msb(uint256(newVal)) >> BITS_TO_BYTES_SHIFT) + 1;
+            valWidth = bytesWidth(uint256(newVal));
             prefixWidth = 2;
             prefix = (((valWidth - 1) | flags) << ONE_BYTE_BITS) | expansionBits;
         }
