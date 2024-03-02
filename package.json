@@ -1,0 +1,14 @@
+{
+  "name": "custom-calldata",
+  "module": "ts/CustomCalldata.ts",
+  "type": "module",
+  "devDependencies": {
+    "bun-types": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "viem": "^1.19.13"
+  }
+}
